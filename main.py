@@ -65,21 +65,16 @@ for word in testWords:
 
     A = fd[word]
 
-    for c in finder.score_ngrams(bigram_measures.raw_freq):
+    for c in finder.ngram_fd.items():
         col = c[0][1][0]
 
         B = fd[col]
 
-        AB =
+        AB = c[1]
 
+        mi = mutInf(A, B, AB, size_corpus, 2)
 
-
-        print(AB)
-
-        #mi = mutInf(A, B, AB, size_corpus, 2)
-
-        #print(mi)
-
+        print(mi)
 
     #mi_like score
     #scored = finder.score_ngrams(bigram_measures.mi_like)
