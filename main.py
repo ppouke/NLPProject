@@ -93,11 +93,19 @@ for count, line in enumerate(lines):
 
 
     words = line.split()
-    headwordIndex = int(words[-1].split("@")[1])
-    headword = re.sub(r'[^a-zA-Z ]', '', str(count) + " : " + words[headwordIndex -1])
+    headwordIndex = int(words[-1].split("@")[1]) - 1
+    headword = re.sub(r'[^a-zA-Z ]', '', str(count) + " : " + words[headwordIndex]).strip()
     headwords[headword] = []
-    for i in [-3, -2, 0, 1]:
-        headwords[headword].append(words[headwordIndex + i])
-        
+    
+    for j in range(-1, 2, 2):
+        i = j
+        foundwords = 0
+        while foundwords < 2:
+            if headwordIndex + i >= len(words) - 2 or headwordIndex + i < 0:
+                break
+            if words[headwordIndex+i] not in es:
+                headwords[headword].append(words[headwordIndex+i])
+                foundwords += 1
+            i += j
 
 print(headwords)
