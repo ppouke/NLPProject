@@ -18,7 +18,10 @@ def mutInf(A, B, AB, sizeCorpus, span):
     # B = frequency of collocate
     # AB = frequency of collocate near the node word
     # span = span of words around node word
-    return log( (AB * sizeCorpus)/(A*B*span) ) / 0.30103
+    if A == 0 or B == 0 or AB == 0:
+        return 0
+    else:
+        return log( (AB * sizeCorpus)/(A*B*span) ) / 0.30103
 
 bnc_reader = BNCCorpusReader(root="download\Texts", fileids=r'[A]/\w*/\w*\.xml')
 
@@ -41,6 +44,8 @@ testCorpus  = nltk.Text(corpus0.words())
 #bnc remove stopwords
 es = set(stopwords.words('english'))
 content = [w for w in bncwords if w[0].lower() not in es]
+tagless = [x[0] for x in content]
+fd = FreqDist(tagless)
 
 # tgm = nltk.collocations.TrigramAssocMeasures()
 # finder = TrigramCollocationFinder.from_words(content)
@@ -50,8 +55,6 @@ content = [w for w in bncwords if w[0].lower() not in es]
 
 def findMutualInformation(corpus, testWords, corpus_size, span):
 
-    tagless = [x[0] for x in content]
-    fd = FreqDist(tagless)
 
     metaphorWords = {}
     for t in testWords:
@@ -87,6 +90,7 @@ size_corpus = len(bncwords)
 #2. test Metaphor finding w/ testCorpus
 
 headwords = {}
+groundTruth = []
 f = open("testCorpus.txt", "r")
 lines = f.readlines()
 for count, line in enumerate(lines):
@@ -94,18 +98,75 @@ for count, line in enumerate(lines):
 
     words = line.split()
     headwordIndex = int(words[-1].split("@")[1]) - 1
-    headword = re.sub(r'[^a-zA-Z ]', '', str(count) + " : " + words[headwordIndex]).strip()
+    groundTruth.append(line[-2])
+    headword = re.sub(r'[^a-zA-Z ]', '', words[headwordIndex]).strip()
+    headword += " " + str(count + 1)
     headwords[headword] = []
-    
+
     for j in range(-1, 2, 2):
         i = j
         foundwords = 0
         while foundwords < 2:
-            if headwordIndex + i >= len(words) - 2 or headwordIndex + i < 0:
+            if headwordIndex + i >= len(words) - 1 or headwordIndex + i < 0:
                 break
-            if words[headwordIndex+i] not in es:
+            if words[headwordIndex+i] not in es and len(re.sub(r'[^a-zA-Z ]', '',words[headwordIndex+i]).strip()) > 1 :
                 headwords[headword].append(words[headwordIndex+i])
                 foundwords += 1
             i += j
 
-print(headwords)
+#print(headwords)
+#print(groundTruth)
+
+#calculate MI usinb BNC
+sentMiScore = []
+finder = BigramCollocationFinder.from_words(tagless)
+index = 0
+for h,adjacent in headwords.items():
+    index +=1
+    headword = h.split()[0]
+    A = fd[headword]
+    sumMi = 0
+    numAdj = 0
+    for col in adjacent:
+        B = fd[col]
+        AB = finder.ngram_fd[(headword, col)]
+        mi = mutInf(A, B, AB, size_corpus, 4)
+
+        numAdj += 1
+        sumMi += mi
+
+
+    if numAdj == 0:
+        print(h)
+        avgMi = 0
+    else:
+        avgMi = sumMi/numAdj
+    sentMiScore.append(avgMi)
+
+#calculate accuracy(= correct/all)
+numAll = 0
+numCorrect = 0
+for count, gT in enumerate(groundTruth):
+    if gT == "s":
+        continue
+    else:
+        numAll += 1
+        scoreOver3 = sentMiScore[count] >= 3
+        isMetaphor = gT == "y"
+        if scoreOver3 != isMetaphor:
+            numCorrect += 1
+
+accuracy = numCorrect/numAll
+print(accuracy)
+
+
+#3. Import wordnet
+#using nltk wordnet (change to provalis?)
+from nltk.corpus import wordnet as wn
+def findWordCategories(word, POS):
+    #POS = e.g. wn.VERB
+    for synset in wn.synsets(word, pos=POS):
+        #print(str(synset) + " : " + synset.lexname())
+
+
+#4.
