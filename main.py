@@ -169,7 +169,7 @@ def findWordCategories(word, POS):
     #POS is e.g. wn.VERB
     sets = [word]
     for synset in wn.synsets(word, pos=POS):
-        sets.append(str(synset) + " : " + synset.lexname())
+        sets.append(synset)
 
     return sets
 
@@ -181,39 +181,137 @@ def idSentence(sentence):
 
     #take first occuring Noun and adjective/adverb in sentence (remove break to get all)
     for w in tagged:
-        if "N" in w[1]:
+        if "NN" in w[1]:
             words.append(w)
             break
     for w in tagged:
-        if "J" in w[1] or "RB" in w[1]:
+        if "JJ" in w[1]:
             words.append(w)
+            #print(w[0])
             break
 
     return words
 
 
 def getWordCategories(sentence):
+    nounSyns = None
+    adjSyns = None
     for w in idSentence(sentence):
-        if "N" in w[1]:
+        if "NN" in w[1]:
             nounSyns = findWordCategories(w[0], wn.NOUN)
-        if "J" in w[1]:
+        if "JJ" in w[1]:
             adjSyns = findWordCategories(w[0], wn.ADJ)
-        if "RB" in w[1]:
-            adjSyns = findWordCategories(w[0], wn.ADV)
     return (nounSyns, adjSyns)
 
-cats = getWordCategories("The quick brown fox jumped over the lazy dog")
 
-for c in cats:
-    print(c)
+
+
+cats = getWordCategories("dark future")
 
 def findIfMetaphor(categories):
     if len(categories[1]) == 2:
         return False
-    if len(categories[0]) == 1:
+    if categories[0] == None:
+        return None
+    elif len(categories[0]) == 1:
         return None
 
     noun = categories[0][0]
     adj = categories[1][0]
 
-    finder = BigramCollocationFinder.from_words(tagless)
+    finder = BigramCollocationFinder.from_words(content)
+    fdfilter = lambda *w: adj not in w[0]
+    tagfilter = lambda w1, w2: 'SUBST' not in w2[1]
+    punctfilter = lambda *w: len(w) <= 1
+    finder.apply_ngram_filter(punctfilter)
+    finder.apply_ngram_filter(fdfilter)
+    finder.apply_ngram_filter(tagfilter)
+
+
+
+    A = fd[adj]
+
+    S = []
+    for c in finder.ngram_fd.items():
+        col = c[0][1][0]
+        B = fd[col]
+
+        AB = c[1]
+
+        mi = mutInf(A, B, AB, size_corpus, 4)
+        if mi >= 3:
+            S.append((c, mi))
+
+    S1all = []
+    #filter away abstract
+    for n in S:
+        nC = findWordCategories(n[0][0][1][0], wn.NOUN)
+        if len(nC) > 1:
+            h1 = nC[1].hypernym_paths()[0][1]
+            if "physical" in str(h1):
+                S1all.append(n)
+
+        else:
+            return None
+
+
+
+    #keep 3 with higest mutual info
+    S1 = []
+    if len(S1all) > 3:
+        for i in range(3):
+            S1.append(max(S1all,key=lambda item:item[1]))
+            S1all.remove(max(S1all,key=lambda item:item[1]))
+    else:
+        S1 = S1all
+    #print(S1)
+
+    n = wn.synsets(noun)[0]
+    for e in S1:
+        s = wn.synsets(e[0][0][1][0])[0]
+
+        similarity = s.wup_similarity(n)
+
+        if similarity > 0.4:
+            return False
+
+    return True
+#print(findIfMetaphor(cats))
+
+
+#5. test with half the dataset.
+parseTestC()
+mGuess = []
+for count, line in enumerate(lines):
+    tokens = line.split()
+    del tokens[-1]
+    sent = ""
+    for t in tokens:
+        sent += " " + t
+    cat = getWordCategories(sent)
+    if cat[1] is not None:
+        #print(cat[1][0])
+        mGuess.append(str(count) + " : " + str(findIfMetaphor(cat)))
+    else:
+        mGuess.append(str(count) + ": None")
+
+#calculate accuracy(= correct/all)
+print(mGuess)
+numAll = 0
+numCorrect = 0
+numTrue = 0
+for count, gT in enumerate(groundTruth):
+    if gT == "s" or "None" in mGuess[count] :
+        continue
+    else:
+        numAll += 1
+        predictedMetaphor = "True" in mGuess[count]
+        isMetaphor = gT == "y"
+        if predictedMetaphor == isMetaphor:
+            numCorrect += 1
+        if predictedMetaphor:
+            numTrue += 1
+accuracy = numCorrect/numAll
+print(accuracy)
+print(numAll)
+print(numTrue)
