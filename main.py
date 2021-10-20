@@ -93,80 +93,127 @@ headwords = {}
 groundTruth = []
 f = open("testCorpus.txt", "r")
 lines = f.readlines()
-for count, line in enumerate(lines):
 
+def parseTestC():
+    for count, line in enumerate(lines):
+        words = line.split()
+        headwordIndex = int(words[-1].split("@")[1]) - 1
+        groundTruth.append(line[-2])
+        headword = re.sub(r'[^a-zA-Z ]', '', words[headwordIndex]).strip()
+        headword += " " + str(count + 1)
+        headwords[headword] = []
 
-    words = line.split()
-    headwordIndex = int(words[-1].split("@")[1]) - 1
-    groundTruth.append(line[-2])
-    headword = re.sub(r'[^a-zA-Z ]', '', words[headwordIndex]).strip()
-    headword += " " + str(count + 1)
-    headwords[headword] = []
+        for j in range(-1, 2, 2):
+            i = j
+            foundwords = 0
+            while foundwords < 2:
+                if headwordIndex + i >= len(words) - 1 or headwordIndex + i < 0:
+                    break
+                if words[headwordIndex+i] not in es and len(re.sub(r'[^a-zA-Z ]', '',words[headwordIndex+i]).strip()) > 1 :
+                    headwords[headword].append(words[headwordIndex+i])
+                    foundwords += 1
+                i += j
 
-    for j in range(-1, 2, 2):
-        i = j
-        foundwords = 0
-        while foundwords < 2:
-            if headwordIndex + i >= len(words) - 1 or headwordIndex + i < 0:
-                break
-            if words[headwordIndex+i] not in es and len(re.sub(r'[^a-zA-Z ]', '',words[headwordIndex+i]).strip()) > 1 :
-                headwords[headword].append(words[headwordIndex+i])
-                foundwords += 1
-            i += j
-
-#print(headwords)
-#print(groundTruth)
+    #print(headwords)
+    #print(groundTruth)
 
 #calculate MI usinb BNC
-sentMiScore = []
-finder = BigramCollocationFinder.from_words(tagless)
-index = 0
-for h,adjacent in headwords.items():
-    index +=1
-    headword = h.split()[0]
-    A = fd[headword]
-    sumMi = 0
-    numAdj = 0
-    for col in adjacent:
-        B = fd[col]
-        AB = finder.ngram_fd[(headword, col)]
-        mi = mutInf(A, B, AB, size_corpus, 4)
+def calAvgMi():
+    sentMiScore = []
+    finder = BigramCollocationFinder.from_words(tagless)
+    index = 0
+    for h,adjacent in headwords.items():
+        index +=1
+        headword = h.split()[0]
+        A = fd[headword]
+        sumMi = 0
+        numAdj = 0
+        for col in adjacent:
+            B = fd[col]
+            AB = finder.ngram_fd[(headword, col)]
+            mi = mutInf(A, B, AB, size_corpus, 4)
 
-        numAdj += 1
-        sumMi += mi
+            numAdj += 1
+            sumMi += mi
 
 
-    if numAdj == 0:
-        print(h)
-        avgMi = 0
-    else:
-        avgMi = sumMi/numAdj
-    sentMiScore.append(avgMi)
+        if numAdj == 0:
+            print(h)
+            avgMi = 0
+        else:
+            avgMi = sumMi/numAdj
+        sentMiScore.append(avgMi)
 
-#calculate accuracy(= correct/all)
-numAll = 0
-numCorrect = 0
-for count, gT in enumerate(groundTruth):
-    if gT == "s":
-        continue
-    else:
-        numAll += 1
-        scoreOver3 = sentMiScore[count] >= 3
-        isMetaphor = gT == "y"
-        if scoreOver3 != isMetaphor:
-            numCorrect += 1
+    #calculate accuracy(= correct/all)
+    numAll = 0
+    numCorrect = 0
+    for count, gT in enumerate(groundTruth):
+        if gT == "s":
+            continue
+        else:
+            numAll += 1
+            scoreOver3 = sentMiScore[count] >= 3
+            isMetaphor = gT == "y"
+            if scoreOver3 != isMetaphor:
+                numCorrect += 1
 
-accuracy = numCorrect/numAll
-print(accuracy)
+    accuracy = numCorrect/numAll
+    return accuracy
+
 
 
 #3. Import wordnet
 #using nltk wordnet (change to provalis?)
 from nltk.corpus import wordnet as wn
 def findWordCategories(word, POS):
-    #POS = e.g. wn.VERB
+    #POS is e.g. wn.VERB
+    sets = [word]
     for synset in wn.synsets(word, pos=POS):
-        #print(str(synset) + " : " + synset.lexname())
+        sets.append(str(synset) + " : " + synset.lexname())
 
+    return sets
 
 #4.
+def idSentence(sentence):
+    tokens = nltk.word_tokenize(sentence)
+    tagged = nltk.pos_tag(tokens)
+    words = []
+
+    #take first occuring Noun and adjective/adverb in sentence (remove break to get all)
+    for w in tagged:
+        if "N" in w[1]:
+            words.append(w)
+            break
+    for w in tagged:
+        if "J" in w[1] or "RB" in w[1]:
+            words.append(w)
+            break
+
+    return words
+
+
+def getWordCategories(sentence):
+    for w in idSentence(sentence):
+        if "N" in w[1]:
+            nounSyns = findWordCategories(w[0], wn.NOUN)
+        if "J" in w[1]:
+            adjSyns = findWordCategories(w[0], wn.ADJ)
+        if "RB" in w[1]:
+            adjSyns = findWordCategories(w[0], wn.ADV)
+    return (nounSyns, adjSyns)
+
+cats = getWordCategories("The quick brown fox jumped over the lazy dog")
+
+for c in cats:
+    print(c)
+
+def findIfMetaphor(categories):
+    if len(categories[1]) == 2:
+        return False
+    if len(categories[0]) == 1:
+        return None
+
+    noun = categories[0][0]
+    adj = categories[1][0]
+
+    finder = BigramCollocationFinder.from_words(tagless)
