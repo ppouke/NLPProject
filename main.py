@@ -9,29 +9,25 @@ from math import log
 import os
 import re
 
+import wdLoader as wl
+
 from nltk.corpus.reader.bnc import BNCCorpusReader
+from nltk.corpus import reuters
+
+
+
 from nltk.collocations import BigramAssocMeasures, BigramCollocationFinder
+from nltk.corpus import wordnet as wn
 
 
-def mutInf(A, B, AB, sizeCorpus, span):
-    # A = frequency of node word
-    # B = frequency of collocate
-    # AB = frequency of collocate near the node word
-    # span = span of words around node word
-    if A == 0 or B == 0 or AB == 0:
-        return 0
-    else:
-        return log( (AB * sizeCorpus)/(A*B*span) ) / 0.30103
+
+
 
 bnc_reader = BNCCorpusReader(root="download\Texts", fileids=r'[A]/\w*/\w*\.xml')
-
 list_of_fileids = ['A/A0/A00.xml', 'A/A0/A01.xml', 'A/A0/A02.xml', 'A/A0/A03.xml', 'A/A0/A04.xml', 'A/A0/A05.xml']
 bigram_measures = BigramAssocMeasures()
-bncwords = bnc_reader.tagged_words(fileids=list_of_fileids)
+bncwords = bnc_reader.tagged_words()
 #scored = finder.score_ngrams(bigram_measures.raw_freq)
-
-
-
 
 
 #import testC
@@ -47,10 +43,21 @@ content = [w for w in bncwords if w[0].lower() not in es]
 tagless = [x[0] for x in content]
 fd = FreqDist(tagless)
 
-# tgm = nltk.collocations.TrigramAssocMeasures()
-# finder = TrigramCollocationFinder.from_words(content)
-#
-# finder.apply_freq_filter(3)
+
+
+
+
+
+def mutInf(A, B, AB, sizeCorpus, span):
+    # A = frequency of node word
+    # B = frequency of collocate
+    # AB = frequency of collocate near the node word
+    # span = span of words around node word
+    if A == 0 or B == 0 or AB == 0:
+        return 0
+    else:
+        return log( (AB * sizeCorpus)/(A*B*span) ) / 0.30103
+
 
 
 def findMutualInformation(corpus, testWords, corpus_size, span):
@@ -164,7 +171,7 @@ def calAvgMi():
 
 #3. Import wordnet
 #using nltk wordnet (change to provalis?)
-from nltk.corpus import wordnet as wn
+
 def findWordCategories(word, POS):
     #POS is e.g. wn.VERB
     sets = [word]
@@ -206,7 +213,7 @@ def getWordCategories(sentence):
 
 
 
-cats = getWordCategories("dark future")
+cats = getWordCategories("this is a dark world")
 
 def findIfMetaphor(categories):
     if len(categories[1]) == 2:
@@ -267,51 +274,74 @@ def findIfMetaphor(categories):
     #print(S1)
 
     n = wn.synsets(noun)[0]
+    #Wu-Palmer method
+
+
+    # for e in S1:
+    #     s = wn.synsets(e[0][0][1][0])[0]
+    #
+    #     similarity = s.wup_similarity(n)
+    #
+    #     if similarity > 0.4:
+    #         return False
+    #
+    # return True
+
+    #Word domain method
+    wloader = wl.WordNetDomains(os.getcwd())
+    nDomains = wloader.get_domains(noun)
+
     for e in S1:
-        s = wn.synsets(e[0][0][1][0])[0]
-
-        similarity = s.wup_similarity(n)
-
-        if similarity > 0.4:
-            return False
+        colDomains = wloader.get_domains(e[0][0][1][0])
+        for d in colDomains:
+            if d in nDomains:
+                return False
 
     return True
 #print(findIfMetaphor(cats))
 
 
 #5. test with half the dataset.
-parseTestC()
-mGuess = []
-for count, line in enumerate(lines):
-    tokens = line.split()
-    del tokens[-1]
-    sent = ""
-    for t in tokens:
-        sent += " " + t
-    cat = getWordCategories(sent)
-    if cat[1] is not None:
-        #print(cat[1][0])
-        mGuess.append(str(count) + " : " + str(findIfMetaphor(cat)))
-    else:
-        mGuess.append(str(count) + ": None")
 
-#calculate accuracy(= correct/all)
-print(mGuess)
-numAll = 0
-numCorrect = 0
-numTrue = 0
-for count, gT in enumerate(groundTruth):
-    if gT == "s" or "None" in mGuess[count] :
-        continue
-    else:
-        numAll += 1
-        predictedMetaphor = "True" in mGuess[count]
-        isMetaphor = gT == "y"
-        if predictedMetaphor == isMetaphor:
-            numCorrect += 1
-        if predictedMetaphor:
-            numTrue += 1
-accuracy = numCorrect/numAll
-print(accuracy)
-print(numAll)
-print(numTrue)
+parseTestC()
+
+
+def testCorpusTest():
+    mGuess = []
+    for count, line in enumerate(lines):
+        tokens = line.split()
+        del tokens[-1]
+        sent = ""
+        for t in tokens:
+            sent += " " + t
+        cat = getWordCategories(sent)
+        if cat[1] is not None:
+            #print(cat[1][0])
+            mGuess.append(str(count) + " : " + str(findIfMetaphor(cat)))
+        else:
+            mGuess.append(str(count) + ": None")
+
+    #calculate accuracy(= correct/all)
+    print(mGuess)
+    numAll = 0
+    numCorrect = 0
+    numTrue = 0
+    for count, gT in enumerate(groundTruth):
+        if gT == "s" or "None" in mGuess[count] :
+            continue
+        else:
+            numAll += 1
+            predictedMetaphor = "True" in mGuess[count]
+            isMetaphor = gT == "y"
+            if predictedMetaphor == isMetaphor:
+                numCorrect += 1
+            if predictedMetaphor:
+                numTrue += 1
+    accuracy = numCorrect/numAll
+    print(accuracy)
+    print(numAll)
+    print(numTrue)
+
+
+
+testCorpusTest()
