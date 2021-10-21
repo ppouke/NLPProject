@@ -2,6 +2,7 @@ from collections import defaultdict
 from nltk.corpus import WordNetCorpusReader
 from os.path import exists
 
+#made by Alex Moreo at https://stackoverflow.com/questions/21902411/how-to-get-domain-of-words-using-wordnet-in-python
 class WordNetDomains:
     def __init__(self, wordnet_home):
         #This class assumes you have downloaded WordNet2.0 and WordNetDomains and that they are on the same data home.
