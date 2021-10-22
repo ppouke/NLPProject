@@ -8,6 +8,7 @@ import numpy as np
 from math import log
 import os
 import re
+import pickle
 
 import wdLoader as wl
 
@@ -23,12 +24,13 @@ from nltk.corpus import wordnet as wn
 
 
 
-bnc_reader = BNCCorpusReader(root="download\Texts", fileids=r'[A]/\w*/\w*\.xml')
+bnc_reader = BNCCorpusReader(root="download\Texts", fileids=r'[A-K]/\w*/\w*\.xml')
 list_of_fileids = ['A/A0/A00.xml', 'A/A0/A01.xml', 'A/A0/A02.xml', 'A/A0/A03.xml', 'A/A0/A04.xml', 'A/A0/A05.xml']
 bigram_measures = BigramAssocMeasures()
 bncwords = bnc_reader.tagged_words()
+reutwords = reuters.words()
 #scored = finder.score_ngrams(bigram_measures.raw_freq)
-
+print("bncwords")
 
 #import testC
 path = os.path.dirname(os.path.abspath(__file__))
@@ -39,10 +41,25 @@ testCorpus  = nltk.Text(corpus0.words())
 
 #bnc remove stopwords
 es = set(stopwords.words('english'))
-content = [w for w in bncwords if w[0].lower() not in es]
+content = [w for w in bncwords if w[0] not in es and w[0].isalpha()]
+
+print("stopwords")
+print(content[0])
+print(len(content))
+
+with open('stopworded.pkl', 'wb') as f:
+    pickle.dump(content, f)
+
+print("Saved")
+
+reutcontent = [w for w in reutwords if w not in es and w.isalpha()]
+with open('stopwordedReut.pkl', 'wb') as f:
+    pickle.dump(reutcontent, f)
+
+print("Saved2")
+
 tagless = [x[0] for x in content]
 fd = FreqDist(tagless)
-
 
 
 
