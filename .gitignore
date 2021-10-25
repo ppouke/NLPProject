@@ -1,3 +1,6 @@
 download/
 wn-domains-3.2/
 WordNet-2.0
+stopworded.pkl
+stopwordedReut.pkl
+*.pyc
