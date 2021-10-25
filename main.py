@@ -9,11 +9,15 @@ from math import log
 import os
 import re
 import pickle
+from os.path import exists
+import copy
+
 
 import wdLoader as wl
 
 from nltk.corpus.reader.bnc import BNCCorpusReader
 from nltk.corpus import reuters
+from nltk.corpus import brown
 
 
 
@@ -23,44 +27,79 @@ from nltk.stem import WordNetLemmatizer
 
 
 
-
-bnc_reader = BNCCorpusReader(root="download\Texts", fileids=r'[A-K]/\w*/\w*\.xml')
-list_of_fileids = ['A/A0/A00.xml', 'A/A0/A01.xml', 'A/A0/A02.xml', 'A/A0/A03.xml', 'A/A0/A04.xml', 'A/A0/A05.xml']
-bigram_measures = BigramAssocMeasures()
-bncwords = bnc_reader.tagged_words()
-reutwords = reuters.words()
-#scored = finder.score_ngrams(bigram_measures.raw_freq)
-print("bncwords")
-
-#import testC
-path = os.path.dirname(os.path.abspath(__file__))
-files = "testCorpus.txt"
-corpus0 = PlaintextCorpusReader(path, files)
-testCorpus  = nltk.Text(corpus0.words())
-
-
-#bnc remove stopwords
+#import stopword list
 es = set(stopwords.words('english'))
-content = [w for w in bncwords if w[0] not in es and w[0].isalpha()]
+content = []
+reutcontent = []
+#import stopworded list if exists
+if os.path.exists('stopworded.pkl'):
+    print("bnc exists")
+    with open("stopworded.pkl", "rb") as file:
+        content = pickle.load(file)
+else:
+    bnc_reader = BNCCorpusReader(root="download\Texts", fileids=r'[A-K]/\w*/\w*\.xml')
+    list_of_fileids = ['A/A0/A00.xml', 'A/A0/A01.xml', 'A/A0/A02.xml', 'A/A0/A03.xml', 'A/A0/A04.xml', 'A/A0/A05.xml']
+    bigram_measures = BigramAssocMeasures()
+    bncwords = bnc_reader.tagged_words()
 
-print("stopwords")
-print(content[0])
-print(len(content))
+    #bnc remove stopwords
+    content = [w for w in bncwords if w[0] not in es and w[0].isalpha()]
 
-with open('stopworded.pkl', 'wb') as f:
-    pickle.dump(content, f)
+    print("stopwords")
+    print(content[0])
+    print(len(content))
 
-print("Saved")
+    with open('stopworded.pkl', 'wb') as f:
+        pickle.dump(content, f)
 
-reutcontent = [w for w in reutwords if w not in es and w.isalpha()]
-with open('stopwordedReut.pkl', 'wb') as f:
-    pickle.dump(reutcontent, f)
+    print("Saved")
 
-print("Saved2")
+if os.path.exists("stopwordedReut.pkl"):
+    print("reut exists")
+    with open("stopwordedReut.pkl", "rb") as file:
+        reutcontent = pickle.load(file)
+else:
+    reutwords = reuters.words()
+    reutcontent = [w for w in reutwords if w not in es and w.isalpha()]
+    with open('stopwordedReut.pkl', 'wb') as f:
+        pickle.dump(reutcontent, f)
 
+    print("Saved2")
+
+
+
+# #import testC as corpus
+# path = os.path.dirname(os.path.abspath(__file__))
+# files = "testCorpus.txt"
+# corpus0 = PlaintextCorpusReader(path, files)
+# testCorpus  = nltk.Text(corpus0.words())
+
+
+"""_________________________"""
+"""Change to False to use Reuters Corpus"""
+
+usingBNC = True
+
+
+"""_________________________"""
+
+size_corpus = 96263399
+if not usingBNC:
+    print("Using Reuters Corpus")
+    content = reutcontent
+    size_corpus = 35247
+else:
+    print("Using BNC Corpus")
+
+
+content = brown.tagged_words()
+sizeCorpus = len(content)
+
+
+print("loaded corpuses, creating tagless...")
 tagless = [x[0] for x in content]
 fd = FreqDist(tagless)
-
+print("Created tagless")
 
 
 
@@ -105,18 +144,7 @@ def findMutualInformation(corpus, testWords, corpus_size, span):
             #print(scored)
     return metaphorWords
 
-#1. Find metaphors for words in BNC
-testWords = ["woman", "use", "dream", "body"]
-size_corpus = len(bncwords)
-#mets = findMutualInformation(content, testWords, size_corpus, 4)
-#print(mets)
 
-#2. test Metaphor finding w/ testCorpus
-
-headwords = {}
-groundTruth = []
-f = open("testCorpus.txt", "r")
-lines = f.readlines()
 
 def parseTestC():
     for count, line in enumerate(lines):
@@ -186,8 +214,7 @@ def calAvgMi():
 
 
 
-#3. Import wordnet
-#using nltk wordnet (change to provalis?)
+
 
 def findWordCategories(word, POS):
     #POS is e.g. wn.VERB
@@ -232,30 +259,43 @@ def getWordCategories(sentence):
 
 
 
-def findIfMetaphor(categories):
+def findIfMetaphor(categories, WuPalmer=True):
+
     if len(categories[1]) == 2:
+        print("only one synonym for adjective")
         return False
     if categories[0] == None:
+
         return None
-    elif len(categories[0]) == 1:
+    if len(categories[0]) == 1:
+        print("noun not found in synonyms")
         return None
 
     noun = categories[0][0]
     adj = categories[1][0]
-    lem = WordNetLemmatizer()
 
-    finder = BigramCollocationFinder.from_words(content)
-    fdfilter = lambda *w: adj != w[0] #perform lemmatization?
-    tagfilter = lambda *w: 'NN' not in nltk.pos_tag([w[1]])[0][1]
+    print("copying finder...")
+    finder = copy.deepcopy(global_finder)
+    print("Done!")
+
+
+    # print(global_finder)
+    # print(finder)
+
+    fdfilter = lambda *w: adj != w[0]
+    if usingBNC:
+        tagfilter = lambda w1, w2: 'SUBST' not in w2[1]
+    else:
+        tagfilter = lambda *w: 'NN' not in nltk.pos_tag([w[1]])[0][1]
     punctfilter = lambda *w: len(w[1]) <= 1
-    finder.apply_ngram_filter(punctfilter)
+    #finder.apply_ngram_filter(punctfilter)
     finder.apply_ngram_filter(fdfilter)
     finder.apply_ngram_filter(tagfilter)
 
 
+    #print("Found bigrams:  " + str(finder.ngram_fd.items()))
 
 
-    print(finder.ngram_fd.items())
 
     A = fd[adj]
 
@@ -295,45 +335,41 @@ def findIfMetaphor(categories):
     #print(S1)
 
     n = wn.synsets(noun)[0]
-    #Wu-Palmer method
 
+    if WuPalmer:
+        #Wu-Palmer method
 
-    # for e in S1:
-    #     s = wn.synsets(e[0][0][1][0])[0]
-    #
-    #     similarity = s.wup_similarity(n)
-    #
-    #     if similarity > 0.4:
-    #         return False
-    #
-    # return True
+        for e in S1:
+            s = wn.synsets(e[0][0][1][0])[0]
 
-    #Word domain method
-    wloader = wl.WordNetDomains(os.getcwd())
-    nDomains = wloader.get_domains(noun)
+            similarity = s.wup_similarity(n)
 
-    for e in S1:
-        colDomains = wloader.get_domains(e[0][0][1][0])
-        for d in colDomains:
-            if d in nDomains:
+            if similarity > 0.4:
                 return False
 
-    return True
+        return True
+    else:
+        #Word domain method
+
+        wloader = wl.WordNetDomains(os.getcwd())
+        nDomains = wloader.get_domains(noun)
+
+        for e in S1:
+            colDomains = wloader.get_domains(e[0][0][1][0])
+            for d in colDomains:
+                if d in nDomains:
+                    return False
+
+        return True
 
 
 
-cats = getWordCategories("this is a natural world")
-#print(findIfMetaphor(cats))
-
-
-#5. test with half the dataset.
-
-parseTestC()
-
-
-def testCorpusTest():
+def testCorpusTest(WuPalmer=True):
+    print("testing with annotated corpus")
     mGuess = []
+
     for count, line in enumerate(lines):
+        print("processing: " + str(count) + "/" + str(len(lines)))
         tokens = line.split()
         del tokens[-1]
         sent = ""
@@ -341,9 +377,10 @@ def testCorpusTest():
             sent += " " + t
         cat = getWordCategories(sent)
         if cat[1] is not None:
-            #print(cat[1][0])
-            mGuess.append(str(count) + " : " + str(findIfMetaphor(cat)))
+
+            mGuess.append(str(count) + " : " + str(findIfMetaphor(cat, WuPalmer)))
         else:
+            print("no adjective")
             mGuess.append(str(count) + ": None")
 
     #calculate accuracy(= correct/all)
@@ -363,10 +400,60 @@ def testCorpusTest():
             if predictedMetaphor:
                 numTrue += 1
     accuracy = numCorrect/numAll
-    print(accuracy)
-    print(numAll)
-    print(numTrue)
+    print("accuracy:" + accuracy)
 
 
 
-testCorpusTest()
+
+
+#1. Find metaphors for words in BNC
+
+#create bigram finder
+print("Creating bigram finder")
+global_finder = BigramCollocationFinder.from_words(content)
+print("Created bigrams")
+
+print("Using mutual information method")
+testWords = ["woman", "use", "dream", "body"]
+mets = findMutualInformation(content, testWords, size_corpus, 4)
+print("found metaphors:")
+print(mets)
+
+#2. test Metaphor finding w/ testCorpus
+headwords = {}
+groundTruth = []
+f = open("testCorpus.txt", "r")
+lines = f.readlines()
+parseTestC() #initializes headwords and groundTruth
+calAvgMi()
+
+
+
+#3 & 4.Test Compatibility using wu and palmer
+#print("Using Wu-Palmer similarity to check word compatibility")
+sen1 = "this is a natural world"
+sen2 = "this is a dark world"
+
+
+cats = getWordCategories(sen1)
+print("Sentence 1 (not metaphor): "+ str(findIfMetaphor(cats, True)))
+
+cats = getWordCategories(sen2)
+print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, True))
+
+
+
+
+#5. Test with annotated corpus
+testCorpusTest(True)
+
+#6.Using wordnets
+print("Using WordNet Method to check word compatibility")
+cats = getWordCategories(sen1)
+print("Sentence 1 (not a metaphor): "+ str(findIfMetaphor(cats, False)))
+
+cats = getWordCategories(sen2)
+print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, False))
+
+#7. test with annotated corpus
+testCorpusTest(False)
