@@ -78,7 +78,7 @@ else:
 """_________________________"""
 """Change to False to use Reuters Corpus"""
 
-usingBNC = True
+usingBNC = False
 
 
 """_________________________"""
@@ -92,8 +92,6 @@ else:
     print("Using BNC Corpus")
 
 
-content = brown.tagged_words()
-sizeCorpus = len(content)
 
 
 print("loaded corpuses, creating tagless...")
@@ -439,7 +437,7 @@ cats = getWordCategories(sen1)
 print("Sentence 1 (not metaphor): "+ str(findIfMetaphor(cats, True)))
 
 cats = getWordCategories(sen2)
-print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, True))
+print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, True)))
 
 
 
@@ -453,7 +451,7 @@ cats = getWordCategories(sen1)
 print("Sentence 1 (not a metaphor): "+ str(findIfMetaphor(cats, False)))
 
 cats = getWordCategories(sen2)
-print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, False))
+print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, False)))
 
 #7. test with annotated corpus
 testCorpusTest(False)
