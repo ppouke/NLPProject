@@ -124,9 +124,11 @@ def findMutualInformation(corpus, testWords, corpus_size, span):
     for word in testWords:
         finder = BigramCollocationFinder.from_words(corpus)
         fdfilter = lambda *w: word not in w[0]
-        tagfilter = lambda w1, w2: "VERB" not in w2[1] and "ADJ" not in w2[1] and "ADV" not in w2[1]
+        tagfilter = lambda *w: "VB" not in nltk.pos_tag([w[1]])[0][1] and "JJ" not in nltk.pos_tag([w[1]])[0][1] and "RB" not in nltk.pos_tag([w[1]])[0][1]
         finder.apply_ngram_filter(fdfilter)
         finder.apply_ngram_filter(tagfilter)
+
+        print(finder.ngram_fd.items())
 
         A = fd[word]
         for c in finder.ngram_fd.items():
@@ -398,7 +400,7 @@ def testCorpusTest(WuPalmer=True):
             if predictedMetaphor:
                 numTrue += 1
     accuracy = numCorrect/numAll
-    print("accuracy:" + accuracy)
+    print("accuracy:" + str(accuracy))
 
 
 
@@ -423,7 +425,7 @@ groundTruth = []
 f = open("testCorpus.txt", "r")
 lines = f.readlines()
 parseTestC() #initializes headwords and groundTruth
-calAvgMi()
+print("accuracy: " + str(calAvgMi()))
 
 
 
