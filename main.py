@@ -18,7 +18,7 @@ from nltk.corpus import reuters
 
 from nltk.collocations import BigramAssocMeasures, BigramCollocationFinder
 from nltk.corpus import wordnet as wn
-
+from nltk.stem import WordNetLemmatizer
 
 
 
@@ -26,7 +26,7 @@ from nltk.corpus import wordnet as wn
 bnc_reader = BNCCorpusReader(root="download\Texts", fileids=r'[A]/\w*/\w*\.xml')
 list_of_fileids = ['A/A0/A00.xml', 'A/A0/A01.xml', 'A/A0/A02.xml', 'A/A0/A03.xml', 'A/A0/A04.xml', 'A/A0/A05.xml']
 bigram_measures = BigramAssocMeasures()
-bncwords = bnc_reader.tagged_words()
+bncwords = reuters.words() #change this for different corpus
 #scored = finder.score_ngrams(bigram_measures.raw_freq)
 
 
@@ -213,7 +213,7 @@ def getWordCategories(sentence):
 
 
 
-cats = getWordCategories("this is a dark world")
+
 
 def findIfMetaphor(categories):
     if len(categories[1]) == 2:
@@ -225,16 +225,20 @@ def findIfMetaphor(categories):
 
     noun = categories[0][0]
     adj = categories[1][0]
+    lem = WordNetLemmatizer()
 
     finder = BigramCollocationFinder.from_words(content)
-    fdfilter = lambda *w: adj not in w[0]
-    tagfilter = lambda w1, w2: 'SUBST' not in w2[1]
-    punctfilter = lambda *w: len(w) <= 1
+    fdfilter = lambda *w: adj != w[0] #perform lemmatization?
+    tagfilter = lambda *w: 'NN' not in nltk.pos_tag([w[1]])[0][1]
+    punctfilter = lambda *w: len(w[1]) <= 1
     finder.apply_ngram_filter(punctfilter)
     finder.apply_ngram_filter(fdfilter)
     finder.apply_ngram_filter(tagfilter)
 
 
+
+
+    print(finder.ngram_fd.items())
 
     A = fd[adj]
 
@@ -298,6 +302,10 @@ def findIfMetaphor(categories):
                 return False
 
     return True
+
+
+
+cats = getWordCategories("this is a natural world")
 #print(findIfMetaphor(cats))
 
 
