@@ -32,20 +32,26 @@ es = set(stopwords.words('english'))
 content = []
 reutcontent = []
 #import stopworded list if exists
-if os.path.exists('stopworded.pkl'):
+if os.path.exists('stopworded123.pkl'):
     print("bnc exists")
     with open("stopworded.pkl", "rb") as file:
         content = pickle.load(file)
 else:
-    bnc_reader = BNCCorpusReader(root="download\Texts", fileids=r'[A-K]/\w*/\w*\.xml')
+    bnc_reader = BNCCorpusReader(root="download\Texts", fileids=r'[A-B]/\w*/\w*\.xml')
     list_of_fileids = ['A/A0/A00.xml', 'A/A0/A01.xml', 'A/A0/A02.xml', 'A/A0/A03.xml', 'A/A0/A04.xml', 'A/A0/A05.xml']
     bigram_measures = BigramAssocMeasures()
-    bncwords = bnc_reader.tagged_words()
+    print("creating tagged word list")
+    #bncwords = bnc_reader.tagged_words()
 
+    bncwords = bnc_reader.words()
+
+    size_corpus = len(bncwords)
+
+    print("removing stopwords")
     #bnc remove stopwords
-    content = [w for w in bncwords if w[0] not in es and w[0].isalpha()]
+    content = [w for w in bncwords if w not in es and w.isalpha()]
 
-    print("stopwords")
+    print("Done!")
     print(content[0])
     print(len(content))
 
@@ -78,24 +84,29 @@ else:
 """_________________________"""
 """Change to False to use Reuters Corpus"""
 
+usingReut = False
 usingBNC = False
 
 
 """_________________________"""
 
 size_corpus = 96263399
-if not usingBNC:
+if usingReut:
     print("Using Reuters Corpus")
     content = reutcontent
-    size_corpus = 35247
+    size_corpus = len(content)
+    tagless = content
+
 else:
     print("Using BNC Corpus")
+    #tagless = [x[0] for x in content]
+    tagless = content
 
 
 
 
 print("loaded corpuses, creating tagless...")
-tagless = [x[0] for x in content]
+
 fd = FreqDist(tagless)
 print("Created tagless")
 
@@ -108,9 +119,12 @@ def mutInf(A, B, AB, sizeCorpus, span):
     # AB = frequency of collocate near the node word
     # span = span of words around node word
     if A == 0 or B == 0 or AB == 0:
+        print("{},{},{}".format(A,B,AB))
         return 0
     else:
         return log( (AB * sizeCorpus)/(A*B*span) ) / 0.30103
+
+
 
 
 
@@ -124,7 +138,10 @@ def findMutualInformation(corpus, testWords, corpus_size, span):
     for word in testWords:
         finder = BigramCollocationFinder.from_words(corpus)
         fdfilter = lambda *w: word not in w[0]
-        tagfilter = lambda *w: "VB" not in nltk.pos_tag([w[1]])[0][1] and "JJ" not in nltk.pos_tag([w[1]])[0][1] and "RB" not in nltk.pos_tag([w[1]])[0][1]
+        if usingBNC:
+            tagfilter = lambda w1, w2: 'VB' not in w2[1] and 'JJ' not in w2[1] and 'RB' not in w2[1]
+        else:
+            tagfilter = lambda *w: "VB" not in nltk.pos_tag([w[1]])[0][1] and "JJ" not in nltk.pos_tag([w[1]])[0][1] and "RB" not in nltk.pos_tag([w[1]])[0][1]
         finder.apply_ngram_filter(fdfilter)
         finder.apply_ngram_filter(tagfilter)
 
@@ -132,7 +149,11 @@ def findMutualInformation(corpus, testWords, corpus_size, span):
 
         A = fd[word]
         for c in finder.ngram_fd.items():
-            col = c[0][1][0]
+            if usingBNC:
+                col = c[0][1][0]
+            else:
+                col = c[0][1]
+            #print(col)
             B = fd[col]
             AB = c[1]
             mi = mutInf(A, B, AB, corpus_size, span)
@@ -284,7 +305,7 @@ def findIfMetaphor(categories, WuPalmer=True):
 
     fdfilter = lambda *w: adj != w[0]
     if usingBNC:
-        tagfilter = lambda w1, w2: 'SUBST' not in w2[1]
+        tagfilter = lambda w1, w2: 'NN' not in w2[1]
     else:
         tagfilter = lambda *w: 'NN' not in nltk.pos_tag([w[1]])[0][1]
     punctfilter = lambda *w: len(w[1]) <= 1
@@ -293,7 +314,7 @@ def findIfMetaphor(categories, WuPalmer=True):
     finder.apply_ngram_filter(tagfilter)
 
 
-    #print("Found bigrams:  " + str(finder.ngram_fd.items()))
+
 
 
 
@@ -301,29 +322,46 @@ def findIfMetaphor(categories, WuPalmer=True):
 
     S = []
     for c in finder.ngram_fd.items():
-        col = c[0][1][0]
-        B = fd[col]
+        if usingBNC:
+            col = c[0][1][0]
+        else:
+            col = c[0][1]
 
+        B = fd[col]
         AB = c[1]
 
         mi = mutInf(A, B, AB, size_corpus, 4)
         if mi >= 3:
             S.append((c, mi))
 
-    S1all = []
+
+
+
     #filter away abstract
+    S1all = []
     for n in S:
-        nC = findWordCategories(n[0][0][1][0], wn.NOUN)
+        if usingBNC:
+            nC = findWordCategories(n[0][0][1][0], wn.NOUN)
+        else:
+            nC = findWordCategories(n[0][0][1], wn.NOUN)
+
+
+
         if len(nC) > 1:
-            h1 = nC[1].hypernym_paths()[0][1]
+            try:
+                h1 = nC[1].hypernym_paths()[0][1]
+            except:
+                continue
             if "physical" in str(h1):
                 S1all.append(n)
 
         else:
-            return None
+            continue
 
 
 
+    if len(S1all) == 0:
+        return None
     #keep 3 with higest mutual info
     S1 = []
     if len(S1all) > 3:
@@ -332,19 +370,24 @@ def findIfMetaphor(categories, WuPalmer=True):
             S1all.remove(max(S1all,key=lambda item:item[1]))
     else:
         S1 = S1all
-    #print(S1)
+
 
     n = wn.synsets(noun)[0]
 
+
+
     if WuPalmer:
         #Wu-Palmer method
-
         for e in S1:
-            s = wn.synsets(e[0][0][1][0])[0]
+            if usingBNC:
+                s = wn.synsets(e[0][0][1][0])[0]
+                print(e[0][0][1][0])
+            else:
+                s = wn.synsets(e[0][0][1])[0]
 
+            print("similarity between {} and {}".format(s,n))
             similarity = s.wup_similarity(n)
-
-            if similarity > 0.4:
+            if similarity > 0.3:
                 return False
 
         return True
@@ -354,8 +397,20 @@ def findIfMetaphor(categories, WuPalmer=True):
         wloader = wl.WordNetDomains(os.getcwd())
         nDomains = wloader.get_domains(noun)
 
+        if "factotum" in nDomains:
+            nDomains.remove("factotum")
+        #factotum in all words?
+
         for e in S1:
-            colDomains = wloader.get_domains(e[0][0][1][0])
+            if usingBNC:
+                colDomains = wloader.get_domains(e[0][0][1][0])
+            else:
+                colDomains = wloader.get_domains(e[0][0][1])
+
+            print("domains in {} : {}".format(e[0][0][1], colDomains))
+            print("domains in {} : {}".format(noun, nDomains))
+
+
             for d in colDomains:
                 if d in nDomains:
                     return False
@@ -413,7 +468,7 @@ print("Creating bigram finder")
 global_finder = BigramCollocationFinder.from_words(content)
 print("Created bigrams")
 
-print("Using mutual information method")
+# print("Using mutual information method")
 testWords = ["woman", "use", "dream", "body"]
 mets = findMutualInformation(content, testWords, size_corpus, 4)
 print("found metaphors:")
@@ -425,14 +480,14 @@ groundTruth = []
 f = open("testCorpus.txt", "r")
 lines = f.readlines()
 parseTestC() #initializes headwords and groundTruth
-print("accuracy: " + str(calAvgMi()))
+#print("accuracy: " + str(calAvgMi()))
 
 
 
 #3 & 4.Test Compatibility using wu and palmer
-#print("Using Wu-Palmer similarity to check word compatibility")
-sen1 = "this is a natural world"
-sen2 = "this is a dark world"
+print("Using Wu-Palmer similarity to check word compatibility")
+sen1 = "cold room"
+sen2 = "cold heart"
 
 
 cats = getWordCategories(sen1)
