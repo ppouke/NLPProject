@@ -262,21 +262,21 @@ def getWordCategories(sentence):
 def findIfMetaphor(categories, WuPalmer=True):
 
     if len(categories[1]) == 2:
-        print("only one synonym for adjective")
+        #print("only one synonym for adjective")
         return False
     if categories[0] == None:
 
         return None
     if len(categories[0]) == 1:
-        print("noun not found in synonyms")
+        #print("noun not found in synonyms")
         return None
 
     noun = categories[0][0]
     adj = categories[1][0]
 
-    print("copying finder...")
+    #print("copying finder...")
     finder = copy.deepcopy(global_finder)
-    print("Done!")
+    #print("Done!")
 
 
     # print(global_finder)
@@ -369,7 +369,7 @@ def testCorpusTest(WuPalmer=True):
     mGuess = []
 
     for count, line in enumerate(lines):
-        print("processing: " + str(count) + "/" + str(len(lines)))
+        #print("processing: " + str(count) + "/" + str(len(lines)))
         tokens = line.split()
         del tokens[-1]
         sent = ""
@@ -380,11 +380,11 @@ def testCorpusTest(WuPalmer=True):
 
             mGuess.append(str(count) + " : " + str(findIfMetaphor(cat, WuPalmer)))
         else:
-            print("no adjective")
+            #print("no adjective")
             mGuess.append(str(count) + ": None")
 
     #calculate accuracy(= correct/all)
-    print(mGuess)
+    #print(mGuess)
     numAll = 0
     numCorrect = 0
     numTrue = 0
