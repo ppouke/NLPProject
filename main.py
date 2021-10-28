@@ -12,7 +12,7 @@ import pickle
 from os.path import exists
 import copy
 
-
+import readMetaphorList as rml
 import wdLoader as wl
 
 from nltk.corpus.reader.bnc import BNCCorpusReader
@@ -292,10 +292,9 @@ def getWordCategories(sentence):
 def findIfMetaphor(categories, WuPalmer=True):
 
     if len(categories[1]) == 2:
-        #print("only one synonym for adjective")
+        #print("only one synonym for adjective: {}".format(categories[1][0]))
         return False
     if categories[0] == None:
-
         return None
     if len(categories[0]) == 1:
         #print("noun not found in synonyms")
@@ -386,7 +385,6 @@ def findIfMetaphor(categories, WuPalmer=True):
 
     n = wn.synsets(noun)[0]
 
-    print(S1)
 
     if WuPalmer:
         #Wu-Palmer method
@@ -399,13 +397,13 @@ def findIfMetaphor(categories, WuPalmer=True):
 
 
             similarity = s.wup_similarity(n)
-            #print("similarity between {} and {} = {}".format(s,n, similarity))
+            print("similarity between {} and {} = {}".format(s,n, similarity))
             if similarity > wpthreshold:
-                print("words {} and {} is NOT a metaphor".format(adj,noun))
+                #print("words {} and {} is NOT a metaphor".format(adj,noun))
                 return False
 
 
-        print("words {} and {} is a metaphor".format(adj,noun))
+        #print("words {} and {} is a metaphor".format(adj,noun))
         return True
 
     else:
@@ -430,9 +428,9 @@ def findIfMetaphor(categories, WuPalmer=True):
 
             for d in colDomains:
                 if d in nDomains:
-                    print("words {} and {} is NOT a metaphor".format(adj,noun))
+                    #print("words {} and {} is NOT a metaphor".format(adj,noun))
                     return False
-        print("words {} and {} is a metaphor".format(adj,noun))
+        #print("words {} and {} is a metaphor".format(adj,noun))
         return True
 
 
@@ -491,6 +489,61 @@ def testCorpusTest(WuPalmer=True):
     print("accuracy:" + str(accuracy))
 
 
+def metaphorListTest(metaLines,type3Meta,doa,  WuPalmer=True):
+    print("testing with metaphorList")
+    mGuess = []
+    for count, line in enumerate(metaLines):
+        #print("\r processing: " + str(count) + "/" + str(len(metaLines)), end="")
+
+        tokens = line.split()
+
+        del tokens[0]
+
+
+
+        words = []
+        for w in type3Meta:
+            if w[0][0] in tokens and w[0][1] in tokens:
+                words = w[0]
+                print(words)
+
+        sent = ""
+        for t in words:
+            sent += " " + t
+
+
+        cat = getWordCategories(sent)
+
+        if cat[1] is not None:
+
+            mGuess.append(str(count) + " : " + str(findIfMetaphor(cat, WuPalmer)))
+        else:
+            #print("no adjective")
+            mGuess.append(str(count) + ": None")
+
+    #calculate accuracy(= correct/all)
+    numAll = 0
+    numCorrect = 0
+    numTrue = 0
+    for count, gT in enumerate(doa):
+        if "None" in mGuess[count] :
+            continue
+        else:
+            numAll += 1
+            predictedMetaphor = "True" in mGuess[count]
+            isMetaphor = doa[count]
+            if predictedMetaphor == isMetaphor:
+                numCorrect += 1
+            if predictedMetaphor:
+                numTrue += 1
+    accuracy = numCorrect/numAll
+
+    print("\n Using threshold: " + str(wpthreshold))
+    print("num All: " + str(numAll))
+    print("num Correct: " + str(numCorrect))
+    print("accuracy:" + str(accuracy))
+
+
 
 
 
@@ -526,20 +579,25 @@ testFinder.apply_ngram_filter(punctfilter)
 testFinder.apply_ngram_filter(testFilter)
 
 type3metaphors = testFinder.ngram_fd.items()
-print(type3metaphors)
+#print(type3metaphors)
+
+
+
+
+
 
 #3 & 4.Test Compatibility using wu and palmer
 wpthreshold = 0.4
 print("Using Wu-Palmer similarity to check word compatibility")
 sen1 = "cold room"
-sen2 = "cold heart"
+sen2 = "He was a rather frightened flower in her presence"
 
 
-cats = getWordCategories(sen1)
-print("Sentence 1 (not metaphor): "+ str(findIfMetaphor(cats, True)))
-
-cats = getWordCategories(sen2)
-print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, True)))
+# cats = getWordCategories(sen1)
+# print("Sentence 1 (not metaphor): "+ str(findIfMetaphor(cats, True)))
+#
+# cats = getWordCategories(sen2)
+# print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, True)))
 
 
 #5. Test with annotated corpus
@@ -554,4 +612,8 @@ print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, True)))
 # print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, False)))
 #
 # #7. test with annotated corpus
-testCorpusTest(False)
+#testCorpusTest(False)
+
+#3rd list
+deadOrAlive, metList, metLines = rml.readMetList()
+metaphorListTest(metLines, metList, deadOrAlive, False)
