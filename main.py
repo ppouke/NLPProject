@@ -32,7 +32,7 @@ es = set(stopwords.words('english'))
 content = []
 reutcontent = []
 #import stopworded list if exists
-if os.path.exists('stopworded123.pkl'):
+if os.path.exists('stopworded.pkl'):
     print("bnc exists")
     with open("stopworded.pkl", "rb") as file:
         content = pickle.load(file)
@@ -74,17 +74,17 @@ else:
 
 
 
-# #import testC as corpus
-# path = os.path.dirname(os.path.abspath(__file__))
-# files = "testCorpus.txt"
-# corpus0 = PlaintextCorpusReader(path, files)
-# testCorpus  = nltk.Text(corpus0.words())
+
+path = os.path.dirname(os.path.abspath(__file__))
+files = "testCorpus.txt"
+corpus0 = PlaintextCorpusReader(path, files)
+testCorpus  = corpus0.words()
 
 
 """_________________________"""
 """Change to False to use Reuters Corpus"""
 
-usingReut = False
+usingReut = True
 usingBNC = False
 
 
@@ -119,7 +119,7 @@ def mutInf(A, B, AB, sizeCorpus, span):
     # AB = frequency of collocate near the node word
     # span = span of words around node word
     if A == 0 or B == 0 or AB == 0:
-        print("{},{},{}".format(A,B,AB))
+        #print("{},{},{}".format(A,B,AB))
         return 0
     else:
         return log( (AB * sizeCorpus)/(A*B*span) ) / 0.30103
@@ -135,6 +135,8 @@ def findMutualInformation(corpus, testWords, corpus_size, span):
     for t in testWords:
         metaphorWords[t] = []
 
+
+    miScores = []
     for word in testWords:
         finder = BigramCollocationFinder.from_words(corpus)
         fdfilter = lambda *w: word not in w[0]
@@ -142,12 +144,15 @@ def findMutualInformation(corpus, testWords, corpus_size, span):
             tagfilter = lambda w1, w2: 'VB' not in w2[1] and 'JJ' not in w2[1] and 'RB' not in w2[1]
         else:
             tagfilter = lambda *w: "VB" not in nltk.pos_tag([w[1]])[0][1] and "JJ" not in nltk.pos_tag([w[1]])[0][1] and "RB" not in nltk.pos_tag([w[1]])[0][1]
+
+        finder.apply_freq_filter(3)
         finder.apply_ngram_filter(fdfilter)
         finder.apply_ngram_filter(tagfilter)
 
-        print(finder.ngram_fd.items())
-
+        if  word == "dream":
+            print(finder.ngram_fd.items())
         A = fd[word]
+
         for c in finder.ngram_fd.items():
             if usingBNC:
                 col = c[0][1][0]
@@ -155,14 +160,18 @@ def findMutualInformation(corpus, testWords, corpus_size, span):
                 col = c[0][1]
             #print(col)
             B = fd[col]
+
             AB = c[1]
             mi = mutInf(A, B, AB, corpus_size, span)
-            if mi >= 3:
+            miScores.append(mi)
+            if mi >= miThresh:
                 metaphorWords[word].append(col)
 
             #mi_like score
             #scored = finder.score_ngrams(bigram_measures.mi_like)
             #print(scored)
+
+    print("avg mi = " + str(np.average(miScores)))
     return metaphorWords
 
 
@@ -295,6 +304,8 @@ def findIfMetaphor(categories, WuPalmer=True):
     noun = categories[0][0]
     adj = categories[1][0]
 
+
+
     #print("copying finder...")
     finder = copy.deepcopy(global_finder)
     #print("Done!")
@@ -310,6 +321,7 @@ def findIfMetaphor(categories, WuPalmer=True):
         tagfilter = lambda *w: 'NN' not in nltk.pos_tag([w[1]])[0][1]
     punctfilter = lambda *w: len(w[1]) <= 1
     #finder.apply_ngram_filter(punctfilter)
+    finder.apply_freq_filter(3)
     finder.apply_ngram_filter(fdfilter)
     finder.apply_ngram_filter(tagfilter)
 
@@ -331,7 +343,7 @@ def findIfMetaphor(categories, WuPalmer=True):
         AB = c[1]
 
         mi = mutInf(A, B, AB, size_corpus, 4)
-        if mi >= 3:
+        if mi >= miThresh:
             S.append((c, mi))
 
 
@@ -374,7 +386,7 @@ def findIfMetaphor(categories, WuPalmer=True):
 
     n = wn.synsets(noun)[0]
 
-
+    print(S1)
 
     if WuPalmer:
         #Wu-Palmer method
@@ -385,20 +397,25 @@ def findIfMetaphor(categories, WuPalmer=True):
             else:
                 s = wn.synsets(e[0][0][1])[0]
 
-            print("similarity between {} and {}".format(s,n))
+
             similarity = s.wup_similarity(n)
-            if similarity > 0.3:
+            #print("similarity between {} and {} = {}".format(s,n, similarity))
+            if similarity > wpthreshold:
+                print("words {} and {} is NOT a metaphor".format(adj,noun))
                 return False
 
+
+        print("words {} and {} is a metaphor".format(adj,noun))
         return True
+
     else:
         #Word domain method
 
         wloader = wl.WordNetDomains(os.getcwd())
         nDomains = wloader.get_domains(noun)
 
-        if "factotum" in nDomains:
-            nDomains.remove("factotum")
+        # if "factotum" in nDomains:
+        #     nDomains.remove("factotum")
         #factotum in all words?
 
         for e in S1:
@@ -407,14 +424,15 @@ def findIfMetaphor(categories, WuPalmer=True):
             else:
                 colDomains = wloader.get_domains(e[0][0][1])
 
-            print("domains in {} : {}".format(e[0][0][1], colDomains))
-            print("domains in {} : {}".format(noun, nDomains))
+            #print("domains in {} : {}".format(e[0][0][1], colDomains))
+            #print("domains in {} : {}".format(noun, nDomains))
 
 
             for d in colDomains:
                 if d in nDomains:
+                    print("words {} and {} is NOT a metaphor".format(adj,noun))
                     return False
-
+        print("words {} and {} is a metaphor".format(adj,noun))
         return True
 
 
@@ -424,12 +442,24 @@ def testCorpusTest(WuPalmer=True):
     mGuess = []
 
     for count, line in enumerate(lines):
-        #print("processing: " + str(count) + "/" + str(len(lines)))
+        #print("\r processing: " + str(count) + "/" + str(len(lines)), end="")
+
         tokens = line.split()
+
         del tokens[-1]
+        #print(tokens)
+        #print(type3metaphors)
+
+        words = []
+        for w in type3metaphors:
+            if w[0][0] in tokens and w[0][1] in tokens:
+                words = w[0]
+
+
         sent = ""
-        for t in tokens:
+        for t in words:
             sent += " " + t
+
         cat = getWordCategories(sent)
         if cat[1] is not None:
 
@@ -445,6 +475,7 @@ def testCorpusTest(WuPalmer=True):
     numTrue = 0
     for count, gT in enumerate(groundTruth):
         if gT == "s" or "None" in mGuess[count] :
+            print(gT)
             continue
         else:
             numAll += 1
@@ -455,6 +486,9 @@ def testCorpusTest(WuPalmer=True):
             if predictedMetaphor:
                 numTrue += 1
     accuracy = numCorrect/numAll
+    print("num All: " + str(numAll))
+    print("num True: " + str(numTrue))
+    print("\n Using threshold: " + str(wpthreshold))
     print("accuracy:" + str(accuracy))
 
 
@@ -468,6 +502,8 @@ print("Creating bigram finder")
 global_finder = BigramCollocationFinder.from_words(content)
 print("Created bigrams")
 
+miThresh = 3
+print("Mi threshold = " + str(miThresh))
 # print("Using mutual information method")
 testWords = ["woman", "use", "dream", "body"]
 mets = findMutualInformation(content, testWords, size_corpus, 4)
@@ -482,9 +518,19 @@ lines = f.readlines()
 parseTestC() #initializes headwords and groundTruth
 #print("accuracy: " + str(calAvgMi()))
 
+#second way
+testCorpusNS = [w for w in testCorpus if w not in es]
+testFinder = BigramCollocationFinder.from_words(testCorpusNS)
+punctfilter = lambda *w: len(w[0]) <= 1 or len(w[1]) <= 1
+testFilter = lambda w1, w2: 'JJ' not in nltk.pos_tag([w1])[0][1] or "NN" not in nltk.pos_tag([w2])[0][1]
+testFinder.apply_ngram_filter(punctfilter)
+testFinder.apply_ngram_filter(testFilter)
 
+type3metaphors = testFinder.ngram_fd.items()
+print(type3metaphors)
 
 #3 & 4.Test Compatibility using wu and palmer
+wpthreshold = 0.4
 print("Using Wu-Palmer similarity to check word compatibility")
 sen1 = "cold room"
 sen2 = "cold heart"
@@ -497,18 +543,16 @@ cats = getWordCategories(sen2)
 print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, True)))
 
 
-
-
 #5. Test with annotated corpus
-testCorpusTest(True)
-
-#6.Using wordnets
-print("Using WordNet Method to check word compatibility")
-cats = getWordCategories(sen1)
-print("Sentence 1 (not a metaphor): "+ str(findIfMetaphor(cats, False)))
-
-cats = getWordCategories(sen2)
-print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, False)))
-
-#7. test with annotated corpus
+#testCorpusTest(True)
+#
+# #6.Using wordnets
+# print("Using WordNet Method to check word compatibility")
+# cats = getWordCategories(sen1)
+# print("Sentence 1 (not a metaphor): "+ str(findIfMetaphor(cats, False)))
+#
+# cats = getWordCategories(sen2)
+# print("Sentence 2 (metaphor): "+ str(findIfMetaphor(cats, False)))
+#
+# #7. test with annotated corpus
 testCorpusTest(False)
