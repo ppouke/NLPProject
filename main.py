@@ -475,7 +475,6 @@ def testCorpusTest(WuPalmer=True):
     numTrue = 0
     for count, gT in enumerate(groundTruth):
         if gT == "s" or "None" in mGuess[count] :
-            print(gT)
             continue
         else:
             numAll += 1
@@ -487,7 +486,7 @@ def testCorpusTest(WuPalmer=True):
                 numTrue += 1
     accuracy = numCorrect/numAll
     print("num All: " + str(numAll))
-    print("num True: " + str(numTrue))
+    print("num Correct: " + str(numCorrect))
     print("\n Using threshold: " + str(wpthreshold))
     print("accuracy:" + str(accuracy))
 
