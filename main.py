@@ -84,7 +84,7 @@ testCorpus  = corpus0.words()
 """_________________________"""
 """Change to False to use Reuters Corpus"""
 
-usingReut = True
+usingReut = False
 usingBNC = False
 
 
@@ -397,7 +397,7 @@ def findIfMetaphor(categories, WuPalmer=True):
 
 
             similarity = s.wup_similarity(n)
-            print("similarity between {} and {} = {}".format(s,n, similarity))
+            #print("similarity between {} and {} = {}".format(s,n, similarity))
             if similarity > wpthreshold:
                 #print("words {} and {} is NOT a metaphor".format(adj,noun))
                 return False
@@ -493,7 +493,7 @@ def metaphorListTest(metaLines,type3Meta,doa,  WuPalmer=True):
     print("testing with metaphorList")
     mGuess = []
     for count, line in enumerate(metaLines):
-        #print("\r processing: " + str(count) + "/" + str(len(metaLines)), end="")
+        print("\r processing: " + str(count) + "/" + str(len(metaLines)), end="")
 
         tokens = line.split()
 
@@ -505,7 +505,7 @@ def metaphorListTest(metaLines,type3Meta,doa,  WuPalmer=True):
         for w in type3Meta:
             if w[0][0] in tokens and w[0][1] in tokens:
                 words = w[0]
-                print(words)
+                #print(words)
 
         sent = ""
         for t in words:
@@ -524,7 +524,8 @@ def metaphorListTest(metaLines,type3Meta,doa,  WuPalmer=True):
     #calculate accuracy(= correct/all)
     numAll = 0
     numCorrect = 0
-    numTrue = 0
+    falsePos = 0
+    falseNeg = 0
     for count, gT in enumerate(doa):
         if "None" in mGuess[count] :
             continue
@@ -534,14 +535,19 @@ def metaphorListTest(metaLines,type3Meta,doa,  WuPalmer=True):
             isMetaphor = doa[count]
             if predictedMetaphor == isMetaphor:
                 numCorrect += 1
-            if predictedMetaphor:
-                numTrue += 1
+            elif predictedMetaphor:
+                falsePos += 1
+            elif not predictedMetaphor:
+                falseNeg += 1
     accuracy = numCorrect/numAll
+
 
     print("\n Using threshold: " + str(wpthreshold))
     print("num All: " + str(numAll))
     print("num Correct: " + str(numCorrect))
     print("accuracy:" + str(accuracy))
+    print("num false positives: " + str(falsePos))
+    print("num false negatives: " +str(falseNeg))
 
 
 
@@ -587,7 +593,7 @@ type3metaphors = testFinder.ngram_fd.items()
 
 
 #3 & 4.Test Compatibility using wu and palmer
-wpthreshold = 0.4
+wpthreshold = 0.2
 print("Using Wu-Palmer similarity to check word compatibility")
 sen1 = "cold room"
 sen2 = "He was a rather frightened flower in her presence"
@@ -616,4 +622,4 @@ sen2 = "He was a rather frightened flower in her presence"
 
 #3rd list
 deadOrAlive, metList, metLines = rml.readMetList()
-metaphorListTest(metLines, metList, deadOrAlive, False)
+metaphorListTest(metLines, metList, deadOrAlive, True)
