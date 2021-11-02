@@ -149,8 +149,8 @@ def findMutualInformation(corpus, testWords, corpus_size, span):
         finder.apply_ngram_filter(fdfilter)
         finder.apply_ngram_filter(tagfilter)
 
-        if  word == "dream":
-            print(finder.ngram_fd.items())
+        #if  word == "dream":
+            #print(finder.ngram_fd.items())
         A = fd[word]
 
         for c in finder.ngram_fd.items():
@@ -320,7 +320,7 @@ def findIfMetaphor(categories, WuPalmer=True):
         tagfilter = lambda *w: 'NN' not in nltk.pos_tag([w[1]])[0][1]
     punctfilter = lambda *w: len(w[1]) <= 1
     #finder.apply_ngram_filter(punctfilter)
-    finder.apply_freq_filter(3)
+    #finder.apply_freq_filter(3)
     finder.apply_ngram_filter(fdfilter)
     finder.apply_ngram_filter(tagfilter)
 
@@ -440,7 +440,7 @@ def testCorpusTest(WuPalmer=True):
     mGuess = []
 
     for count, line in enumerate(lines):
-        #print("\r processing: " + str(count) + "/" + str(len(lines)), end="")
+        print("\r processing: " + str(count) + "/" + str(len(lines)), end="")
 
         tokens = line.split()
 
@@ -470,7 +470,8 @@ def testCorpusTest(WuPalmer=True):
     #print(mGuess)
     numAll = 0
     numCorrect = 0
-    numTrue = 0
+    falsePos = 0
+    falseNeg = 0
     for count, gT in enumerate(groundTruth):
         if gT == "s" or "None" in mGuess[count] :
             continue
@@ -480,13 +481,20 @@ def testCorpusTest(WuPalmer=True):
             isMetaphor = gT == "y"
             if predictedMetaphor == isMetaphor:
                 numCorrect += 1
-            if predictedMetaphor:
-                numTrue += 1
+            elif predictedMetaphor:
+                falsePos += 1
+            elif not predictedMetaphor:
+                falseNeg += 1
     accuracy = numCorrect/numAll
+
+
+    print("\n Using threshold: " + str(wpthreshold))
     print("num All: " + str(numAll))
     print("num Correct: " + str(numCorrect))
-    print("\n Using threshold: " + str(wpthreshold))
     print("accuracy:" + str(accuracy))
+    print("num false positives: " + str(falsePos))
+    print("num false negatives: " +str(falseNeg))
+
 
 
 def metaphorListTest(metaLines,type3Meta,doa,  WuPalmer=True):
@@ -560,13 +568,13 @@ print("Creating bigram finder")
 global_finder = BigramCollocationFinder.from_words(content)
 print("Created bigrams")
 
-miThresh = 3
+miThresh = 5
 print("Mi threshold = " + str(miThresh))
 # print("Using mutual information method")
 testWords = ["woman", "use", "dream", "body"]
 mets = findMutualInformation(content, testWords, size_corpus, 4)
-print("found metaphors:")
-print(mets)
+#print("found metaphors:")
+#print(mets)
 
 #2. test Metaphor finding w/ testCorpus
 headwords = {}
@@ -593,8 +601,8 @@ type3metaphors = testFinder.ngram_fd.items()
 
 
 #3 & 4.Test Compatibility using wu and palmer
-wpthreshold = 0.2
-print("Using Wu-Palmer similarity to check word compatibility")
+wpthreshold = 0.4
+
 sen1 = "cold room"
 sen2 = "He was a rather frightened flower in her presence"
 
@@ -607,8 +615,13 @@ sen2 = "He was a rather frightened flower in her presence"
 
 
 #5. Test with annotated corpus
+
+#print("Using WuP")
 #testCorpusTest(True)
-#
+
+
+#print("using WordNet")
+#testCorpusTest(False)
 # #6.Using wordnets
 # print("Using WordNet Method to check word compatibility")
 # cats = getWordCategories(sen1)
@@ -621,5 +634,5 @@ sen2 = "He was a rather frightened flower in her presence"
 #testCorpusTest(False)
 
 #3rd list
-deadOrAlive, metList, metLines = rml.readMetList()
-metaphorListTest(metLines, metList, deadOrAlive, True)
+#deadOrAlive, metList, metLines = rml.readMetList()
+#metaphorListTest(metLines, metList, deadOrAlive, False)
