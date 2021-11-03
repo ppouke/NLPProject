@@ -82,11 +82,9 @@ testCorpus  = corpus0.words()
 
 
 """_________________________"""
-"""Change to False to use Reuters Corpus"""
+"""Change to True to use Reuters Corpus"""
 
 usingReut = False
-usingBNC = False
-
 
 """_________________________"""
 
@@ -111,6 +109,9 @@ fd = FreqDist(tagless)
 print("Created tagless")
 
 
+
+#extra dependecy boolean (CHANGE LATER)
+usingBNC = False
 
 
 def mutInf(A, B, AB, sizeCorpus, span):
@@ -568,7 +569,7 @@ print("Creating bigram finder")
 global_finder = BigramCollocationFinder.from_words(content)
 print("Created bigrams")
 
-miThresh = 5
+miThresh = 3
 print("Mi threshold = " + str(miThresh))
 # print("Using mutual information method")
 testWords = ["woman", "use", "dream", "body"]
@@ -601,7 +602,7 @@ type3metaphors = testFinder.ngram_fd.items()
 
 
 #3 & 4.Test Compatibility using wu and palmer
-wpthreshold = 0.4
+wpthreshold = 0.3
 
 sen1 = "cold room"
 sen2 = "He was a rather frightened flower in her presence"
@@ -615,13 +616,8 @@ sen2 = "He was a rather frightened flower in her presence"
 
 
 #5. Test with annotated corpus
-
-#print("Using WuP")
 #testCorpusTest(True)
 
-
-#print("using WordNet")
-#testCorpusTest(False)
 # #6.Using wordnets
 # print("Using WordNet Method to check word compatibility")
 # cats = getWordCategories(sen1)
@@ -633,6 +629,11 @@ sen2 = "He was a rather frightened flower in her presence"
 # #7. test with annotated corpus
 #testCorpusTest(False)
 
-#3rd list
-#deadOrAlive, metList, metLines = rml.readMetList()
-#metaphorListTest(metLines, metList, deadOrAlive, False)
+#EXTRA: different annotated corpus for testing
+# deadOrAlive, metList, metLines = rml.readMetList()
+
+# print("WuP")
+# metaphorListTest(metLines, metList, deadOrAlive, True)
+
+# print("Wordnet")
+# metaphorListTest(metLines, metList, deadOrAlive, False)
